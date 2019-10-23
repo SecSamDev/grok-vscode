@@ -1,0 +1,16 @@
+{
+    "Grok Pattern": {
+		"prefix": "grokp",
+		"body": [
+			"%{$1:$2}"
+		],
+		"description": "Grok pattern %{}"
+	},
+	"Grok Reggex": {
+		"prefix": "grokr",
+		"body": [
+			"(?<$1>$2)"
+		],
+		"description": "Grok regex (?<...>...)"
+	}
+}

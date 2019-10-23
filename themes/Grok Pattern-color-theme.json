@@ -1,0 +1,72 @@
+{
+	"name": "Grok Pattern",
+	"type": "dark",
+	"colors": {
+		"editor.background": "#263238",
+		"editor.foreground": "#eeffff",
+		"activityBarBadge.background": "#007acc",
+		"sideBarTitle.foreground": "#bbbbbb"
+	},
+	"tokenColors": [
+		{
+			"name": "Grok Pattern separator :",
+			"scope": [
+				"keyword.operator.assignment"
+			],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#cc2727"
+			}
+		},
+		{
+			"name": "Grok Pattern field name",
+			"scope": [
+				"meta.definition.variable.name"
+			],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#2c275a"
+			}
+		},
+		{
+			"name": "Grok Pattern regex pattern",
+			"scope": [
+				"entity.name.function"
+			],
+			"settings": {
+				"fontStyle": "bold",
+				"foreground": "#00ff40"
+			}
+		},
+		{
+			"name": "Grok Pattern %{...}",
+			"scope": [
+				"keyword.control"
+			],
+			"settings": {
+				"fontStyle": "",
+				"foreground": "#cc2727"
+			}
+		},
+		{
+			"name": "Grok Regex (?<...>...)",
+			"scope": [
+				"keyword.control.less"
+			],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#cc2727"
+			}
+		},
+		{
+			"name": "Grok Regex field <...>",
+			"scope": [
+				"meta.definition.variable.name"
+			],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#2c275a"
+			}
+		}
+	]
+}

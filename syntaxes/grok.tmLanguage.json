@@ -1,0 +1,122 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "grok",
+	"patterns": [
+        {
+            "include": "#grok-pattern"
+        },
+        {
+            "include": "#log-separators"
+        },
+        {
+            "include": "#regex-word"
+        },
+        {
+            "include": "#regex-number"
+        },
+        {
+            "include": "#grok-regex"
+        },
+        {
+            "include": "#regex-words"
+        },
+        {
+            "include": "#regex-any"
+        }
+    ],
+    "repository": {
+        "field-pattern":{
+            "match": "([A-Za-z0-9]+)(:)([A-Za-z0-9_]+)",
+            "captures": {
+                "1": {
+                    "name": "entity.name.function"
+                },
+                "2": {
+                    "name": "keyword.operator.assignment"
+                },
+                "3": {
+                    "name": "meta.definition.variable.name"
+                }
+            }
+        },
+        "field-regex":{
+            "match": "(<)([A-Za-z0-9]+)(>)(.*)",
+            "captures": {
+                "1": {
+                    "name": "keyword.control.less"
+                },
+                "2": {
+                    "name": "meta.definition.variable.name"
+                },
+                "3": {
+                    "name": "keyword.control.less"
+                },
+                "4": {
+                    "patterns": [
+                        {"include": "source.grok"}
+                    ]
+                }
+            }
+        },
+        "log-separators":{
+            "match": "(,|:|;)",
+            "name": "keyword.control.less"
+        },
+        "grok-pattern": {
+            "begin": "%\\{",
+            "end": "\\}",
+            "beginCaptures": {
+                "0": {
+                    "name": "keyword.control"
+                }
+            },
+            "endCaptures": {
+                "0": {
+                    "name": "keyword.control"
+                }
+            },
+            "name": "support.function",
+            "patterns": [
+                {
+                    "include": "#field-pattern"
+                }
+            ]
+        },
+        "grok-regex":{
+            "begin": "\\(\\?(?=<)",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": {
+                    "name": "keyword.control"
+                }
+            },
+            "endCaptures": {
+                "0": {
+                    "name": "keyword.control"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#field-regex"
+                }
+            ]
+        },
+        "regex-word":{
+            "match": "(\\\\{1,2}w(\\+|\\*)?)",
+            "name" : "string.quoted"
+        },
+        "regex-number":{
+            "match": "(\\\\{1,2}d(\\+|\\*)?)|(\\[0-9\\](\\+|\\*)?)|(?:\\s([0-9]+))",
+            "name" : "constant.numeric"
+        },
+        "regex-words":{
+            "match": "(\\\\{1,2}[WDsS](\\+|\\*)?)",
+            "name" : "entity.name.section"
+        },
+        "regex-any":{
+            "match": "(\\.\\*(\\?)?)",
+            "name" : "keyword.control"
+        }
+    },
+	"scopeName": "source.grok"
+}
