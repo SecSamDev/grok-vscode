@@ -1,6 +1,20 @@
 import * as vscode from 'vscode';
 
 export class GrokAutoCompleteProvider implements vscode.CompletionItemProvider, vscode.HoverProvider {
+	private firstLinePattern : boolean | undefined;
+
+	constructor(private context: vscode.ExtensionContext) {
+		this.firstLinePattern = vscode.workspace.getConfiguration('grok').get('firstLinePattern');
+		if(!this.firstLinePattern){
+			vscode.workspace.getConfiguration('grok').update('firstLinePattern',true);
+			this.firstLinePattern = true;
+		}
+
+		vscode.workspace.onDidChangeConfiguration(() => {
+			this.firstLinePattern = vscode.workspace.getConfiguration('grok').get('firstLinePattern') || true;
+		});
+	}
+	
 	public provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext):Thenable<vscode.CompletionItem[]> {
 		let linePrefix = document.lineAt(position).text.substr(0, position.character);
 		if (linePrefix.endsWith('%{')) {
@@ -14,15 +28,16 @@ export class GrokAutoCompleteProvider implements vscode.CompletionItemProvider, 
 			}
 			return Promise.resolve(toRet);
 		} else if (linePrefix.endsWith('(?')) {
-			let toRet = []
-			for(let i =0; i < GROK_PATTERNS.length; i++){
-				const snippetCompletion = new vscode.CompletionItem(GROK_PATTERNS[i]);
-				snippetCompletion.insertText = new vscode.SnippetString('<' + GROK_PATTERNS[i] + '>' + (document.lineAt(position).text.substr(0, position.character + 1).endsWith(')') ? '' : ')'));
-				snippetCompletion.documentation = new vscode.MarkdownString("Regex: " + GROK_EXPLANATION[i]);
-
-				toRet.push(snippetCompletion);
-			}
-			return Promise.resolve(toRet);
+			let ret = []
+			let snippetCompletion = new vscode.CompletionItem("Grok regex: (?<field_name>regex)");
+			snippetCompletion.insertText = new vscode.SnippetString('<field_name>' + (document.lineAt(position).text.substr(0, position.character + 1).endsWith(')') ? '' : ')'));
+			snippetCompletion.documentation = new vscode.MarkdownString("Format: (?<$(1)>$(2)) ");
+			ret.push(snippetCompletion)
+			snippetCompletion = new vscode.CompletionItem("No capture: (?:regex)");
+			snippetCompletion.insertText = new vscode.SnippetString(':' + (document.lineAt(position).text.substr(0, position.character + 1).endsWith(')') ? '' : ')'));
+			snippetCompletion.documentation = new vscode.MarkdownString("Format: (?:regex) ");
+			ret.push(snippetCompletion)
+			return Promise.resolve(ret);
 		}
 		return Promise.resolve([]);
 	}
@@ -39,7 +54,8 @@ export class GrokAutoCompleteProvider implements vscode.CompletionItemProvider, 
 			}
 		}
 		return Promise.resolve(new vscode.Hover(""))
-    }
+	}
+
 }
 function getExplanation(pattern : string){
 	for(let i =0; i < GROK_PATTERNS.length; i++){

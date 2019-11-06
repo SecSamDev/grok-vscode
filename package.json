@@ -63,5 +63,8 @@
         "tslint": "^5.12.1",
         "vscode-test": "^1.2.0"
     },
-    "publisher": "secsamdev"
+    "publisher": "secsamdev",
+    "dependencies": {
+        "grok-js": "^3.2.3"
+    }
 }
