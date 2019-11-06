@@ -65,6 +65,5 @@
     },
     "publisher": "secsamdev",
     "dependencies": {
-        "grok-js": "^3.2.3"
     }
 }
