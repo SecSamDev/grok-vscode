@@ -11,7 +11,7 @@ export class GrokPattern {
         this.fields = {}
         let myArray;
         while ((myArray = subPatternsRegex.exec(this.pattern)) !== null) {
-            if (myArray.length === 3) {
+            if (myArray.length === 3 && !!myArray[2] ) {
                 this.fields[myArray[2]] = myArray[1]
                 //Convert to named capture group
                 this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
@@ -164,7 +164,7 @@ const GROK_EXPLANATION = [
     "[a-zA-Z0-9._-]+",
     "%{USERNAME}",
     "(?:[+-]?(?:[0-9]+))",
-    "(?<![0-9.+-])(?>[+-]?(?:(?:[0-9]+(?:\\.[0-9]+)?)|(?:\\.[0-9]+)))",
+    "(?<![0-9.+-])(?:[+-]?(?:(?:[0-9]+(?:\\.[0-9]+)?)|(?:\\.[0-9]+)))",
     "(?:%{BASE10NUM})",
     "(?<![0-9A-Fa-f])(?:[+-]?(?:0x)?(?:[0-9A-Fa-f]+))",
     "\\b(?<![0-9A-Fa-f.])(?:[+-]?(?:0x)?(?:(?:[0-9A-Fa-f]+(?:\\.[0-9A-Fa-f]*)?)|(?:\\.[0-9A-Fa-f]+)))\\b",
@@ -175,7 +175,7 @@ const GROK_EXPLANATION = [
     "\\s*",
     ".*?",
     ".*",
-    "(?>(?<!\\\\)(?>\"(?>\\\\.|[^\\\\\"]+)+\"|\"\"|(?>'(?>\\\\.|[^\\\\']+)+')|''|(?>`(?>\\\\.|[^\\\\`]+)+`)|``))",
+    "(?:(?<!\\\\)(?:\"(?:\\\\.|[^\\\\\"]+)+\"|\"\"|(?:'(?:\\\\.|[^\\\\']+)+')|''|(?:`(?:\\\\.|[^\\\\`]+)+`)|``))",
     "[A-Fa-f0-9]{8}-(?:[A-Fa-f0-9]{4}-){3}[A-Fa-f0-9]{12}",
     "(?:%{CISCOMAC}|%{WINDOWSMAC}|%{COMMONMAC})",
     "(?:(?:[A-Fa-f0-9]{4}\\.){2}[A-Fa-f0-9]{4})",
@@ -189,9 +189,9 @@ const GROK_EXPLANATION = [
     "(?:%{HOSTNAME}|%{IP})",
     "%{IPORHOST}:%{POSINT}",
     "(?:%{UNIXPATH}|%{WINPATH})",
-    "(?>/(?>[\\w_%!$@:.,-]+|\\\\.)*)+",
+    "(?:/(?:[\\w_%!$@:.,-]+|\\\\.)*)+",
     "(?:/dev/(pts|tty([pq])?)(\\w+)?/?(?:[0-9]+))",
-    "(?>[A-Za-z]+:|\\\\)(?:\\\\[^\\\\?*]*)+",
+    "(?:[A-Za-z]+:|\\\\)(?:\\\\[^\\\\?*]*)+",
     "[A-Za-z]+(\\+[A-Za-z+]+)?",
     "%{IPORHOST}(?::%{POSINT:port})?",
     "(?:/[A-Za-z0-9$.+!*'(){},~:;=@#%_\\-]*)+",
@@ -204,7 +204,7 @@ const GROK_EXPLANATION = [
     "(?:0[1-9]|1[0-2])",
     "(?:(?:0[1-9])|(?:[12][0-9])|(?:3[01])|[1-9])",
     "(?:Mon(?:day)?|Tue(?:sday)?|Wed(?:nesday)?|Thu(?:rsday)?|Fri(?:day)?|Sat(?:urday)?|Sun(?:day)?)",
-    "(?>\\d\\d){1,2}",
+    "(?:\\d\\d){1,2}",
     "(?:2[0123]|[01]?[0-9])",
     "(?:[0-5][0-9])",
     "(?:(?:[0-5]?[0-9]|60)(?:[:.,][0-9]+)?)",
