@@ -2,7 +2,8 @@
     "name": "grok",
     "displayName": "Grok Pattern",
     "description": "grok pattern",
-    "version": "0.0.3",
+    "version": "0.0.4",
+    "icon": "doc/Grok.png",
     "author": {
         "name": "Samuel Garces"
     },
@@ -65,5 +66,9 @@
     },
     "publisher": "secsamdev",
     "dependencies": {
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/SecSamDev/grok-vscode.git"
     }
 }
