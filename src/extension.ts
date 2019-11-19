@@ -35,16 +35,14 @@ export function activate(context: vscode.ExtensionContext) {
                 const pattern = new GrokPattern(lines[0]);
                 let arry : any[] = [[],[],[],[],[]];
                 let err_arry = [];
-                for(let i = 1; i < lines.length && i < 20; i++){
+                for(let i = 1; i < lines.length && i < 30; i++){
                     try{
                         let matched = pattern.parseSync(lines[i]);
                         if(!!matched){
-                            let dec_i = 0;
                             for(let field of Object.keys(matched)){
                                 const startPos = activeEditor.document.positionAt(sumSize + matched[field].index);
                                 const endPos = activeEditor.document.positionAt(sumSize + matched[field].index + matched[field].value.length);
-                                arry[dec_i].push({ range: new vscode.Range(startPos, endPos), hoverMessage:  field+"="+ matched[field].value });
-                                dec_i = (dec_i + 1) % 5
+                                arry[matched[field].order % 5].push({ range: new vscode.Range(startPos, endPos), hoverMessage:  field+"="+ matched[field].value });
                             }
                         }else{
                             const startPos = activeEditor.document.positionAt(sumSize);

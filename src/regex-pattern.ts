@@ -4,6 +4,7 @@ export class GrokPattern {
     expression: string;
     private pattern: string;
     fields: any;
+    fields_order : string[];
     constructor(expression: string) {
         const subPatternsRegex = /%\{([A-Z0-9_]+)(?::([A-Za-z0-9_]+))?\}/g; // %{subPattern} or %{subPattern:fieldName}
         this.expression = expression;
@@ -12,15 +13,23 @@ export class GrokPattern {
         let myArray;
         while ((myArray = subPatternsRegex.exec(this.pattern)) !== null) {
             if (myArray.length === 3 && !!myArray[2] ) {
-                this.fields[myArray[2]] = myArray[1]
-                //Convert to named capture group
-                this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
+                if(!!this.fields[myArray[2]]){
+                    let nm = getLastNumberId(this.fields,myArray[2]) + 1
+                    this.fields[myArray[2] + '_GROK_' + nm] = myArray[1]
+                    this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + '_GROK_' + nm + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
+                }else{
+                    this.fields[myArray[2]] = myArray[1]
+                    //Convert to named capture group
+                    this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
+                }
             } else {
                 this.pattern = this.pattern.substring(0, myArray.index) + getGrokPattern(myArray[1]) + this.pattern.substring(subPatternsRegex.lastIndex)
             }
             subPatternsRegex.lastIndex = 0
         }
-        this.fields = nested_patterns(this.pattern, this.fields)
+        this.fields = {}
+        this.fields_order = []
+        this.fields_order = nested_patterns(this.pattern, [])
         //Used to throw errors if it cannot compile
         let regexp = new RegExp(this.pattern)
         
@@ -29,25 +38,95 @@ export class GrokPattern {
         let regexp = new RegExp(this.pattern)
         let match =  regexp.exec(logLine)
         let toReturn: any = {}
-        let searchPosition = 0;
+        let searchPosition = regexp.lastIndex;
         if (match) {
+            //TODO: optimize
             const groups = match.groups;
-            for (let key of Object.keys(this.fields)) {
-                if (groups && groups[key]) {
-                    toReturn[key] = {
-                        value : groups[key],
-                        index : logLine.indexOf(groups[key],searchPosition)
+            if(!!groups){
+                let order = 0
+                for(let i = 0; i < this.fields_order.length; i++){
+                    let key = this.fields_order[i]
+                    if (!!groups[key]) {
+                        if(!!groups[key]){
+                            toReturn[key] = {
+                                value : groups[key],
+                                index : logLine.indexOf(groups[key],searchPosition),
+                                order : order
+                            }
+                            if(toReturn[(key)].index === -1){
+                                toReturn[(key)].index = logLine.indexOf(groups[key],0)
+                            }
+                        }
+                        searchPosition = toReturn[(key)].index + groups[(key)].length
+                        
                     }
-                    searchPosition = toReturn[key].index + groups[key].length
+                    order++
                 }
+                
+                for(let i = 0; i < this.fields_order.length; i++){
+                    let key = this.fields_order[i]
+                    if (!!groups[key]) {
+                        try{
+                            let nearest_pos = nearer_capture_group_pos(toReturn[key].index,key,toReturn)
+                            let new_i = logLine.substring(toReturn[key].index, nearest_pos ).lastIndexOf(groups[key]) + toReturn[key].index
+                            toReturn[key].index = new_i
+                            
+                        }catch(err){}
+                    }
+                }
+                let toReturn_filtered : any= {}
+                for(let key of Object.keys(toReturn)){
+                    let f_key = removeGrokFieldName(key)
+                    toReturn_filtered[f_key] = {
+                        value : toReturn[key].value,
+                        index : toReturn[key].index,
+                        order : toReturn[key].order//Color position in array
+                    }
+                }
+                return toReturn_filtered;
             }
-            return toReturn;
+            
         }
         return null;
     }
 }
 
-function nested_patterns(pattern: string, fields: any = {}) {
+function nearer_capture_group_pos(pos : number, me : string, groups : any){
+    let nearer = 10000000
+    for(let key of Object.keys(groups)){
+        if(key != me){
+            if(groups[key].index > pos && groups[key].index < nearer){
+                nearer = groups[key].index
+            }
+        }
+    }
+    return nearer
+
+}
+
+function removeGrokFieldName(field_name : string){
+    return field_name.split('_GROK_')[0]
+}
+
+function getLastNumberId(fields : any, field_name : string){
+    let keys = Object.keys(fields)
+    let number = -1;
+    for(let key in keys){
+        if(key.includes(field_name)){
+            let split = field_name.split('_GROK_');
+            if(split.length === 2){
+                let nm = Number(split[1])
+                if(!!nm && nm > number){
+                    number = nm
+                }
+            }
+            
+        }
+    }
+    return number
+}
+
+function nested_patterns(pattern: string, fields_order: string[] = []) {
     const nestedFieldNamesRegex = /(?:\?<([A-Za-z0-9_]+)>)/g;
     let myArray;
     while ((myArray = nestedFieldNamesRegex.exec(pattern)) !== null) {
@@ -73,13 +152,11 @@ function nested_patterns(pattern: string, fields: any = {}) {
             }
         }
         if (regex_string) {
-            if(!fields[myArray[1]]){
-                fields[myArray[1]] = regex_string
-            }
-            fields = nested_patterns(regex_string, fields)
+            fields_order.push(myArray[1])
+            fields_order = nested_patterns(regex_string, fields_order)
         }
     }
-    return fields
+    return fields_order
 }
 
 function getGrokPattern(grok_name: string): string {
