@@ -3,6 +3,9 @@
 	"name": "grok",
 	"patterns": [
         {
+            "include": "#grok-comment2"
+        },
+        {
             "include": "#grok-pattern"
         },
         {
@@ -39,7 +42,7 @@
             }
         },
         "field-pattern":{
-            "match": "([A-Za-z0-9_]+)(:)([A-Za-z0-9_]+)",
+            "match": "([A-Za-z0-9_\\.\\-]+)(:)([A-Za-z0-9_\\.\\-]+)",
             "captures": {
                 "1": {
                     "name": "entity.name.function"
@@ -53,7 +56,7 @@
             }
         },
         "field-regex":{
-            "match": "(<)([A-Za-z0-9_]+)(>)(.*)",
+            "match": "(<)([A-Za-z0-9_\\.\\-]+)(>)(.*)",
             "captures": {
                 "1": {
                     "name": "keyword.control.less"
@@ -94,6 +97,20 @@
                     "include": "#field-pattern"
                 }
             ]
+        },
+        "grok-comment": {
+            "begin": "\\n//%",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.comment"
+                }
+            },
+            "end" : "\\n",
+            "name": "comment.line.double-slash"
+        },
+        "grok-comment2": {
+            "match": "//%[^$]+$",
+            "name": "comment.line.double-slash"
         },
         "grok-regex":{
             "begin": "\\(\\?(?=<)",

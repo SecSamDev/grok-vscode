@@ -67,6 +67,14 @@
 				"fontStyle": "italic",
 				"foreground": "#2c275a"
 			}
+		},
+		{
+			"name": "Grok Comment //% ",
+			"scope": ["punctuation.definition.comment","comment.line","comment"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#006d2a"
+			}
 		}
 	]
 }

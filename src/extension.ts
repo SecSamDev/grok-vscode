@@ -18,10 +18,52 @@ export function activate(context: vscode.ExtensionContext) {
             }, new GrokAutoCompleteProvider(context)));
 
     //Decorators
-    
     let timeout: NodeJS.Timer | undefined = undefined;
     let activeEditor = vscode.window.activeTextEditor;
+    const command_export = () => {
+        if (!activeEditor) {
+            return;
+        }
+        const txt = activeEditor.document.getText()
+        const grok_text = txt.substring(0, txt.indexOf("\n"));
 
+        vscode.window.showQuickPick(["Export with extra slashes", "To camelCase", "To snake_case", "To worm.case","To kebab-case"], { canPickMany: true, matchOnDetail: true, matchOnDescription: true }).then((pickedExport) => {
+            if (!pickedExport) {
+                return
+            }
+            let selectedExport = ""
+            let showPattern = GrokPattern.exportAsRegex(grok_text);
+            if (pickedExport.includes("To camelCase")) {
+                showPattern = GrokPattern.toCamelCase(showPattern);
+                selectedExport = "CamelCase"
+            } else if (pickedExport.includes("To snake_case")) {
+                showPattern = GrokPattern.toSnakeCase(showPattern);
+                selectedExport = "snake_case"
+            } else if (pickedExport.includes("To worm.case")) {
+                showPattern = GrokPattern.toWormCase(showPattern);
+                selectedExport = "worm.case"
+            }else if (pickedExport.includes("To kebab-case")) {
+                showPattern = GrokPattern.toKebabCase(showPattern);
+                selectedExport = "kebab-case"
+            }
+            if (pickedExport.includes("Export with extra slashes")) {
+                vscode.workspace.openTextDocument( {
+                    language: 'grok',
+                    content : GrokPattern.addExtraSlashes(showPattern)
+                }).then(doc =>{
+                    vscode.window.showTextDocument(doc)
+                })
+            } else {
+                vscode.workspace.openTextDocument( {
+                    language: 'grok',
+                    content : showPattern
+                }).then(doc =>{
+                    vscode.window.showTextDocument(doc)
+                })
+            }
+        })
+    }
+    context.subscriptions.push(vscode.commands.registerCommand("grok:export", command_export));
     function updateDecorations() {
         if (!activeEditor) {
             return;
@@ -29,44 +71,49 @@ export function activate(context: vscode.ExtensionContext) {
         const text = activeEditor.document.getText();
         const lines = text.split("\n");
         let sumSize = 0;
-        if(lines.length > 1 && lines[0].match("%{[A-Za-z0-9_]+:[A-Za-z0-9_]+}")){
+        if (lines.length > 1 /*&& lines[0].match("%{[A-Za-z0-9_\\.]+:[A-Za-z0-9_\\.]+(?::[A-Za-z0-9_\\.]+)?}")*/) {
             sumSize += lines[0].length + "\n".length
-            try{
+            try {
                 const pattern = new GrokPattern(lines[0]);
-                let arry : any[] = [[],[],[],[],[]];
+                let arry: any[] = [[], [], [], [], []];
                 let err_arry = [];
-                for(let i = 1; i < lines.length && i < 30; i++){
-                    try{
+                for (let i = 1; i < lines.length; i++) {
+                    if(lines[i].startsWith("//% ")){
+                        //Comment inside GROK
+                        sumSize += lines[i].length + "\n".length
+                        continue
+                    }
+                    try {
                         let matched = pattern.parseSync(lines[i]);
-                        if(!!matched){
-                            for(let field of Object.keys(matched)){
+                        if (!!matched) {
+                            for (let field of Object.keys(matched)) {
                                 const startPos = activeEditor.document.positionAt(sumSize + matched[field].index);
                                 const endPos = activeEditor.document.positionAt(sumSize + matched[field].index + matched[field].value.length);
-                                arry[matched[field].order % 5].push({ range: new vscode.Range(startPos, endPos), hoverMessage:  field+"="+ matched[field].value });
+                                arry[matched[field].order % 5].push({ range: new vscode.Range(startPos, endPos), hoverMessage: field + "=" + matched[field].value });
                             }
-                        }else{
+                        } else {
                             const startPos = activeEditor.document.positionAt(sumSize);
                             const endPos = activeEditor.document.positionAt(sumSize + lines[i].length);
-                            err_arry.push({ range: new vscode.Range(startPos, endPos), hoverMessage:  "Cannot match pattern: " + pattern.expression })
-                            
-                            
+                            err_arry.push({ range: new vscode.Range(startPos, endPos), hoverMessage: "Cannot match pattern: " + pattern.expression })
+
+
                         }
-                    }catch(err_match){}
+                    } catch (err_match) { }
                     sumSize += lines[i].length + "\n".length
                 }
-                activeEditor.setDecorations(grokColorDecorator1,arry[0]);
-                activeEditor.setDecorations(grokColorDecorator2,arry[1]);
-                activeEditor.setDecorations(grokColorDecorator3,arry[2]);
-                activeEditor.setDecorations(grokColorDecorator4,arry[3]);
-                activeEditor.setDecorations(grokColorDecorator5,arry[4]);
-                activeEditor.setDecorations(grokColorDecoratorError, err_arry );
-            }catch(err_pattern){
+                activeEditor.setDecorations(grokColorDecorator1, arry[0]);
+                activeEditor.setDecorations(grokColorDecorator2, arry[1]);
+                activeEditor.setDecorations(grokColorDecorator3, arry[2]);
+                activeEditor.setDecorations(grokColorDecorator4, arry[3]);
+                activeEditor.setDecorations(grokColorDecorator5, arry[4]);
+                activeEditor.setDecorations(grokColorDecoratorError, err_arry);
+            } catch (err_pattern) {
                 const startPos = activeEditor.document.positionAt(0);
                 const endPos = activeEditor.document.positionAt(lines[0].length);
                 activeEditor.setDecorations(grokColorDecoratorError, [{ range: new vscode.Range(startPos, endPos), hoverMessage: err_pattern + "" }]);
             }
         }
-        
+
     }
 
     function triggerUpdateDecorations() {
@@ -113,7 +160,7 @@ const grokColorDecoratorError = vscode.window.createTextEditorDecorationType({
     }
 });
 const grokColorDecorator1 = vscode.window.createTextEditorDecorationType({
-    cursor : 'crosshair',
+    cursor: 'crosshair',
     overviewRulerColor: 'red',
     borderWidth: '1px',
     borderStyle: 'solid',
@@ -128,7 +175,7 @@ const grokColorDecorator1 = vscode.window.createTextEditorDecorationType({
     }
 });
 const grokColorDecorator2 = vscode.window.createTextEditorDecorationType({
-    cursor : 'crosshair',
+    cursor: 'crosshair',
     overviewRulerColor: 'red',
     borderWidth: '1px',
     borderStyle: 'solid',
@@ -144,7 +191,7 @@ const grokColorDecorator2 = vscode.window.createTextEditorDecorationType({
 });
 grokColorsDecoratorList.push(grokColorDecorator2);
 const grokColorDecorator3 = vscode.window.createTextEditorDecorationType({
-    cursor : 'crosshair',
+    cursor: 'crosshair',
     overviewRulerColor: 'red',
     borderWidth: '1px',
     borderStyle: 'solid',
@@ -160,7 +207,7 @@ const grokColorDecorator3 = vscode.window.createTextEditorDecorationType({
 });
 grokColorsDecoratorList.push(grokColorDecorator3);
 const grokColorDecorator4 = vscode.window.createTextEditorDecorationType({
-    cursor : 'crosshair',
+    cursor: 'crosshair',
     overviewRulerColor: 'red',
     borderWidth: '1px',
     borderStyle: 'solid',
@@ -176,7 +223,7 @@ const grokColorDecorator4 = vscode.window.createTextEditorDecorationType({
 });
 grokColorsDecoratorList.push(grokColorDecorator4);
 const grokColorDecorator5 = vscode.window.createTextEditorDecorationType({
-    cursor : 'crosshair',
+    cursor: 'crosshair',
     overviewRulerColor: 'red',
     borderWidth: '1px',
     borderStyle: 'solid',

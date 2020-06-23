@@ -12,5 +12,12 @@
 			"(?<$1>$2)"
 		],
 		"description": "Grok regex (?<...>...)"
+	},
+	"Grok Comment": {
+		"prefix": "comment",
+		"body": [
+			"//% $1"
+		],
+		"description": "Comment //%......"
 	}
 }

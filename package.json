@@ -2,7 +2,7 @@
     "name": "grok",
     "displayName": "Grok Pattern",
     "description": "grok pattern",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "icon": "doc/Grok.png",
     "author": {
         "name": "Samuel Garces"
@@ -26,6 +26,12 @@
                     ".grok"
                 ],
                 "configuration": "./language-configuration.json"
+            }
+        ],
+        "commands" : [
+            {
+                "command": "grok:export",
+                "title": "Export Grok pattern"
             }
         ],
         "grammars": [

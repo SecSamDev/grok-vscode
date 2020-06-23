@@ -10,20 +10,20 @@ export class GrokPattern {
         this.expression = expression;
         this.pattern = this.expression
         this.fields = {}
-        let myArray;
-        while ((myArray = subPatternsRegex.exec(this.pattern)) !== null) {
-            if (myArray.length === 3 && !!myArray[2] ) {
-                if(!!this.fields[myArray[2]]){
-                    let nm = getLastNumberId(this.fields,myArray[2]) + 1
-                    this.fields[myArray[2] + '_GROK_' + nm] = myArray[1]
-                    this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + '_GROK_' + nm + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
+        let pattern_reg;
+        while ((pattern_reg = subPatternsRegex.exec(this.pattern)) !== null) {
+            if (pattern_reg.length === 3 && !!pattern_reg[2] ) {
+                if(!!this.fields[pattern_reg[2]]){
+                    let nm = getLastNumberId(this.fields,pattern_reg[2]) + 1
+                    this.fields[pattern_reg[2] + '_GROK_' + nm] = pattern_reg[1]
+                    this.pattern = this.pattern.substring(0, pattern_reg.index) + "(?<" + pattern_reg[2] + '_GROK_' + nm + ">" + getGrokPattern(pattern_reg[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
                 }else{
-                    this.fields[myArray[2]] = myArray[1]
+                    this.fields[pattern_reg[2]] = pattern_reg[1]
                     //Convert to named capture group
-                    this.pattern = this.pattern.substring(0, myArray.index) + "(?<" + myArray[2] + ">" + getGrokPattern(myArray[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
+                    this.pattern = this.pattern.substring(0, pattern_reg.index) + "(?<" + pattern_reg[2] + ">" + getGrokPattern(pattern_reg[1]) + ")" + this.pattern.substring(subPatternsRegex.lastIndex)
                 }
             } else {
-                this.pattern = this.pattern.substring(0, myArray.index) + getGrokPattern(myArray[1]) + this.pattern.substring(subPatternsRegex.lastIndex)
+                this.pattern = this.pattern.substring(0, pattern_reg.index) + getGrokPattern(pattern_reg[1]) + this.pattern.substring(subPatternsRegex.lastIndex)
             }
             subPatternsRegex.lastIndex = 0
         }
@@ -34,6 +34,67 @@ export class GrokPattern {
         let regexp = new RegExp(this.pattern)
         
     }
+    static toCamelCase(expression: string) : string{
+        let pattern = expression
+        let group_names = nested_patterns(pattern,[]);
+        for(let i = 0; i < group_names.length; i++){
+            pattern = pattern.replace("<"+group_names[i]+">", "<" + toCamelCase(tokenizeField(group_names[i]))+">" )
+        }
+        return pattern
+    }
+
+    static toKebabCase(expression: string) : string{
+        let pattern = expression
+        let group_names = nested_patterns(pattern,[]);
+        for(let i = 0; i < group_names.length; i++){
+            pattern = pattern.replace("<"+group_names[i]+">", "<" + toKebabCase(tokenizeField(group_names[i]))+">" )
+        }
+        return pattern
+    }
+    static toWormCase(expression: string) : string{
+        let pattern = expression
+        let group_names = nested_patterns(pattern,[]);
+        for(let i = 0; i < group_names.length; i++){
+            pattern = pattern.replace("<"+group_names[i]+">", "<" + toWormCase(tokenizeField(group_names[i]))+">" )
+        }
+        return pattern
+    }
+
+    static exportAsRegex(expression: string) : string{
+        const subPatternsRegex = /%\{([A-Z0-9_]+)(?::([A-Za-z0-9_]+))?\}/g; // %{subPattern} or %{subPattern:fieldName}
+        let pattern = expression
+        let fields : any = {}
+        let pattern_reg;
+        while ((pattern_reg = subPatternsRegex.exec(pattern)) !== null) {
+            if (pattern_reg.length === 3 && !!pattern_reg[2] ) {
+                if(!!fields[pattern_reg[2]]){
+                    let nm = getLastNumberId_clean(fields,pattern_reg[2]) + 1
+                    fields[pattern_reg[2] +"_" + nm] = pattern_reg[1]
+                    pattern = pattern.substring(0, pattern_reg.index) + "(?<" + pattern_reg[2] + '_' + nm + ">" + getGrokPattern(pattern_reg[1]) + ")" + pattern.substring(subPatternsRegex.lastIndex)
+                }else{
+                    fields[pattern_reg[2]] = pattern_reg[1]
+                    //Convert to named capture group
+                    pattern = pattern.substring(0, pattern_reg.index) + "(?<" + pattern_reg[2] + ">" + getGrokPattern(pattern_reg[1]) + ")" + pattern.substring(subPatternsRegex.lastIndex)
+                }
+            } else {
+                pattern = pattern.substring(0, pattern_reg.index) + getGrokPattern(pattern_reg[1]) + pattern.substring(subPatternsRegex.lastIndex)
+            }
+            subPatternsRegex.lastIndex = 0
+        }
+        return pattern
+    }
+    static toSnakeCase(expression: string) : string{
+        let pattern = expression
+        let group_names = nested_patterns(pattern,[]);
+        for(let i = 0; i < group_names.length; i++){
+            pattern = pattern.replace("<"+group_names[i]+">", "<" + toSnakeCase(tokenizeField(group_names[i]))+">" )
+        }
+        return pattern
+    }
+    static addExtraSlashes(expression: string) : string{
+        return expression.replace(/\\/,"\\\\")
+    }
+
     parseSync(logLine: string): any {
         let regexp = new RegExp(this.pattern)
         let match =  regexp.exec(logLine)
@@ -125,7 +186,24 @@ function getLastNumberId(fields : any, field_name : string){
     }
     return number
 }
-
+function getLastNumberId_clean(fields : any, field_name : string){
+    let keys = Object.keys(fields)
+    let number = -1;
+    for(let key in keys){
+        let key_splited = key.split("_")
+        if(key.includes(field_name)){
+            let split = field_name.split('_');
+            if(split.length > key_splited.length){
+                let nm = Number(split[split.length - 1])
+                if(!!nm && nm > number){
+                    number = nm
+                }
+            }
+            
+        }
+    }
+    return number
+}
 function nested_patterns(pattern: string, fields_order: string[] = []) {
     const nestedFieldNamesRegex = /(?:\?<([A-Za-z0-9_]+)>)/g;
     let myArray;
@@ -161,6 +239,63 @@ function nested_patterns(pattern: string, fields_order: string[] = []) {
 
 function getGrokPattern(grok_name: string): string {
     return GROK_EXPLANATION[GROK_PATTERNS.indexOf(grok_name)];
+}
+
+
+function tokenizeField(texto : string){
+    let mytexto = texto.split("_")
+    if(mytexto.length > 1){
+        return mytexto
+    }
+    mytexto = texto.split("\\.")
+    if(mytexto.length > 1){
+        return mytexto
+    }
+    mytexto = texto.split("\\-")
+    if(mytexto.length > 1){
+        return mytexto
+    }
+    let splited_text = []
+    let lastPos = 0;
+    for (let i = 0; i < texto.length; i++){
+        if(texto.charCodeAt(i) >= "A".charCodeAt(0) && texto.charCodeAt(i) <= "Z".charCodeAt(0)){
+            splited_text.push(texto.substring(lastPos,i).toLowerCase())
+            lastPos = i;
+        }
+    }
+    splited_text.push(texto.substring(lastPos).toLowerCase())
+    return splited_text.filter((val)=>{
+        return val != ""
+    })
+}
+function toCamelCase(texto : string[]){
+    let mytexto = texto
+    let returned = ""
+    if(mytexto.length == 1){
+        return texto.join("")
+    }
+    returned += mytexto[0].toLowerCase()
+    for(let i = 1; i < mytexto.length; i++){
+        returned += mytexto[i].substring(0,1).toUpperCase() + mytexto[i].substring(1).toLowerCase()
+    }
+    return returned
+}
+function toWormCase(texto : string[]){
+    let mytexto = texto
+    let returned = ""
+    if(mytexto.length == 1){
+        return texto.join("")
+    }
+    return texto.map((val)=>val.toLowerCase()).join(".")
+}
+
+function toSnakeCase(texto : string[]){
+    let splited_text = texto
+    return splited_text.join("_")
+}
+function toKebabCase(texto : string[]){
+    let splited_text = texto
+    return splited_text.join("-")
 }
 
 const GROK_PATTERNS = [
