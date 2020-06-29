@@ -2,7 +2,7 @@
     "name": "grok",
     "displayName": "Grok Pattern",
     "description": "grok pattern",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "icon": "doc/Grok.png",
     "author": {
         "name": "Samuel Garces"

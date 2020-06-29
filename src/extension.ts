@@ -65,7 +65,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     context.subscriptions.push(vscode.commands.registerCommand("grok:export", command_export));
     function updateDecorations() {
-        if (!activeEditor) {
+        if (!activeEditor || activeEditor.document.languageId != "grok") {
             return;
         }
         const text = activeEditor.document.getText();
