@@ -92,7 +92,7 @@ export class GrokPattern {
         return pattern
     }
     static addExtraSlashes(expression: string) : string{
-        return expression.replace(/\\/g,"\\\\")
+        return expression.replace(/\\/g,"\\\\").replace(/"/g,'\\"')
     }
 
     parseSync(logLine: string): any {

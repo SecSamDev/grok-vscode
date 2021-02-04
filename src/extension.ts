@@ -1,7 +1,11 @@
+
+import { basename, extname } from 'path';
+import { createReadStream, createWriteStream } from 'fs';
 import * as vscode from 'vscode';
 import { GrokAutoCompleteProvider } from './grok-provider';
-import { GrokPattern } from './regex-pattern'
-
+import { GrokPattern } from './regex-pattern';
+import { GrokFileParser } from './grok-file-parser';
+import { pipeline } from 'stream';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -27,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
         const txt = activeEditor.document.getText()
         const grok_text = txt.substring(0, txt.indexOf("\n"));
 
-        vscode.window.showQuickPick(["Export with extra slashes", "To camelCase", "To snake_case", "To worm.case","To kebab-case"], { canPickMany: true, matchOnDetail: true, matchOnDescription: true }).then((pickedExport) => {
+        vscode.window.showQuickPick(["Export with extra slashes", "To camelCase", "To snake_case", "To worm.case", "To kebab-case"], { canPickMany: true, matchOnDetail: true, matchOnDescription: true }).then((pickedExport) => {
             if (!pickedExport) {
                 return
             }
@@ -42,28 +46,68 @@ export function activate(context: vscode.ExtensionContext) {
             } else if (pickedExport.includes("To worm.case")) {
                 showPattern = GrokPattern.toWormCase(showPattern);
                 selectedExport = "worm.case"
-            }else if (pickedExport.includes("To kebab-case")) {
+            } else if (pickedExport.includes("To kebab-case")) {
                 showPattern = GrokPattern.toKebabCase(showPattern);
                 selectedExport = "kebab-case"
             }
             if (pickedExport.includes("Export with extra slashes")) {
-                vscode.workspace.openTextDocument( {
+                vscode.workspace.openTextDocument({
                     language: 'grok',
-                    content : GrokPattern.addExtraSlashes(showPattern)
-                }).then(doc =>{
+                    content: GrokPattern.addExtraSlashes(showPattern)
+                }).then(doc => {
                     vscode.window.showTextDocument(doc)
                 })
             } else {
-                vscode.workspace.openTextDocument( {
+                vscode.workspace.openTextDocument({
                     language: 'grok',
-                    content : showPattern
-                }).then(doc =>{
+                    content: showPattern
+                }).then(doc => {
                     vscode.window.showTextDocument(doc)
                 })
             }
         })
     }
+    const parse_file = () => {
+        if (!activeEditor) {
+            return;
+        }
+        const txt = activeEditor.document.getText()
+        const grok_text = txt.substring(0, txt.indexOf("\n"));
+        vscode.window.showOpenDialog({ canSelectFiles: true, filters: { 'LogFiles': ['log', 'json', 'jsonl'] }, canSelectMany: true, openLabel: "Select files to parse with GROK" }).then((urList) => {
+            if (!urList) {
+                return
+            }
+            let regexPattern = GrokPattern.exportAsRegex(grok_text);
+            for (let i = 0; i < urList.length; i++) {
+                let basefile = basename(urList[i].path)
+
+                //Read LOG file
+                let readFile = createReadStream(urList[i].path, { encoding: 'utf8', autoClose: true });
+                let errorFile = createWriteStream(basefile + ".err.log", { encoding: 'utf8', autoClose: true });
+                let outputFile = createWriteStream(basefile + ".out.json", { encoding: 'utf8', autoClose: true });
+                let fileParser = new GrokFileParser(regexPattern, errorFile);
+                readFile.pipe(fileParser).pipe(outputFile).on('finish', function () {  // finished
+                    console.log('done compressing');
+                });
+                //Create File MATCH output
+                /*pipeline(
+                    readFile,
+                    fileParser,
+                    outputFile,
+                    (err) => {
+                      if (err) {
+                        console.error('Pipeline failed', err);
+                      } else {
+                        console.log('Pipeline succeeded');
+                      }
+                    }
+                  );//*/
+            };
+        });
+    };
+
     context.subscriptions.push(vscode.commands.registerCommand("grok:export", command_export));
+    context.subscriptions.push(vscode.commands.registerCommand("grok:parse_file", parse_file));
     function updateDecorations() {
         if (!activeEditor || activeEditor.document.languageId != "grok") {
             return;
@@ -78,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
                 let arry: any[] = [[], [], [], [], []];
                 let err_arry = [];
                 for (let i = 1; i < lines.length; i++) {
-                    if(lines[i].startsWith("//% ")){
+                    if (lines[i].startsWith("//% ")) {
                         //Comment inside GROK
                         sumSize += lines[i].length + "\n".length
                         continue
